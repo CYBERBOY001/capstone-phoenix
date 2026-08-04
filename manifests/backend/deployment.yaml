@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: backend
+  namespace: phoenix
+
+  labels:
+    app: backend
+
+spec:
+  replicas: 2
+
+  strategy:
+    type: RollingUpdate
+
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+
+      terminationGracePeriodSeconds: 30
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+
+          labelSelector:
+            matchLabels:
+              app: backend
+
+      containers:
+        - name: backend
+
+          image: <YOUR_DOCKERHUB_USERNAME>/phoenix-backend:v1.0.0
+
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5000
+
+          envFrom:
+            - configMapRef:
+                name: phoenix-config
+
+            - secretRef:
+                name: phoenix-secret
+
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+
+            failureThreshold: 30
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+
+            allowPrivilegeEscalation: false
+
+            readOnlyRootFilesystem: false
+
+            capabilities:
+              drop:
+                - ALL
+
+            seccompProfile:
+              type: RuntimeDefault
+
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - sleep 10

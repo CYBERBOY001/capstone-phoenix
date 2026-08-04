@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: phoenix-ingress
+  namespace: phoenix
+
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+
+spec:
+  ingressClassName: nginx
+
+  tls:
+    - hosts:
+        - taskapp.<YOUR_DOMAIN>
+      secretName: phoenix-tls
+
+  rules:
+    - host: taskapp.<YOUR_DOMAIN>
+
+      http:
+
+        paths:
+
+          - path: /
+
+            pathType: Prefix
+
+            backend:
+
+              service:
+                name: frontend
+
+                port:
+                  number: 80
+
+          - path: /api
+
+            pathType: Prefix
+
+            backend:
+
+              service:
+                name: backend
+
+                port:
+                  number: 5000

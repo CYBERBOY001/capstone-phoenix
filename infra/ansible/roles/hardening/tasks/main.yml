@@ -1,0 +1,108 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade packages
+  apt:
+    upgrade: dist
+
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - vim
+      - git
+      - ufw
+      - unzip
+      - fail2ban
+    state: present
+
+- name: Create deployment user
+  user:
+    name: "{{ deploy_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: yes
+    create_home: yes
+
+- name: Create .ssh directory
+  file:
+    path: "/home/{{ deploy_user }}/.ssh"
+    state: directory
+    owner: "{{ deploy_user }}"
+    group: "{{ deploy_user }}"
+    mode: '0700'
+
+- name: Install SSH public key
+  authorized_key:
+    user: "{{ deploy_user }}"
+    key: "{{ ssh_public_key }}"
+
+- name: Disable Password Authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+  notify: Restart SSH
+
+- name: Disable Root Login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: 'PermitRootLogin no'
+  notify: Restart SSH
+
+- name: Allow OpenSSH
+  ufw:
+    rule: allow
+    name: OpenSSH
+
+- name: Allow HTTP
+  ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+
+- name: Allow HTTPS
+  ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+
+- name: Allow Kubernetes API
+  community.general.ufw:
+    rule: allow
+    port: "6443"
+    proto: tcp
+
+- name: Allow Flannel VXLAN
+  community.general.ufw:
+    rule: allow
+    port: "8472"
+    proto: udp
+
+- name: Allow Kubelet
+  community.general.ufw:
+    rule: allow
+    port: "10250"
+    proto: tcp
+
+- name: Allow NodePort range
+  community.general.ufw:
+    rule: allow
+    port: "30000:32767"
+    proto: tcp
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny
+
+- name: Enable Fail2Ban
+  service:
+    name: fail2ban
+    enabled: yes
+    state: started
+  when: install_fail2ban

@@ -1,0 +1,45 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - ca-certificates
+    state: present
+
+- name: Check if K3s Agent is already installed
+  stat:
+    path: /usr/local/bin/k3s-agent
+  register: k3s_agent_binary
+
+- name: Install K3s Agent
+  shell: |
+    curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_VERSION={{ k3s_version }} \
+    K3S_URL=https://{{ hostvars[groups['server'][0]].private_ip }}:6443 \
+    K3S_TOKEN={{ hostvars[groups['server'][0]].k3s_node_token }} \
+    sh -
+  args:
+    executable: /bin/bash
+  when: not k3s_agent_binary.stat.exists
+
+- name: Enable K3s Agent Service
+  systemd:
+    name: k3s-agent
+    enabled: yes
+    state: started
+
+- name: Wait for K3s Agent Service
+  systemd:
+    name: k3s-agent
+  register: k3s_agent_status
+  retries: 30
+  delay: 10
+  until: k3s_agent_status.status.ActiveState == "active"
+
+- name: Display Agent Status
+  debug:
+    msg: "Worker {{ inventory_hostname }} successfully joined the cluster."

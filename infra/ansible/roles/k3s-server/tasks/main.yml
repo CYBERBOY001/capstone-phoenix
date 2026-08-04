@@ -1,0 +1,113 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - ca-certificates
+    state: present
+
+- name: Check if K3s is already installed
+  stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install K3s Server
+  shell: |
+    curl -sfL https://get.k3s.io | \
+    INSTALL_K3S_VERSION={{ k3s_version }} \
+    sh -s - server {% if disable_traefik %}--disable traefik{% endif %}
+  args:
+    executable: /bin/bash
+  when: not k3s_binary.stat.exists
+
+- name: Enable K3s Service
+  systemd:
+    name: k3s
+    enabled: yes
+    state: started
+
+- name: Wait for Kubernetes API
+  wait_for:
+    port: 6443
+    host: 127.0.0.1
+    delay: 10
+    timeout: 300
+
+- name: Wait for node token
+  wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+    timeout: 300
+
+- name: Read node token
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: node_token_file
+
+- name: Save node token
+  set_fact:
+    k3s_node_token: "{{ node_token_file.content | b64decode | trim }}"
+
+- name: Display node token
+  debug:
+    msg: "{{ k3s_node_token }}"
+
+- name: Wait until node becomes Ready
+  shell: |
+    kubectl get nodes --no-headers
+  register: node_status
+  retries: 30
+  delay: 10
+  until: "'Ready' in node_status.stdout"
+
+##########################################################
+# KUBECONFIG
+##########################################################
+
+- name: Ensure local kubeconfig directory exists
+  delegate_to: localhost
+  become: false
+
+  file:
+    path: "{{ playbook_dir }}/../kubeconfig"
+    state: directory
+    mode: "0755"
+
+- name: Fetch kubeconfig
+  fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ kubeconfig_local_path }}"
+    flat: true
+
+- name: Replace localhost with control-plane public IP
+  delegate_to: localhost
+  become: false
+
+  replace:
+    path: "{{ kubeconfig_local_path }}"
+    regexp: "https://127.0.0.1:6443"
+    replace: "https://{{ ansible_host }}:6443"
+
+- name: Secure kubeconfig permissions
+  delegate_to: localhost
+  become: false
+
+  file:
+    path: "{{ kubeconfig_local_path }}"
+    mode: "0600"
+
+##########################################################
+# Verify Cluster
+##########################################################
+
+- name: Verify K3s Installation
+  command: kubectl get nodes
+  register: kubectl_output
+  changed_when: false
+
+- name: Display cluster status
+  debug:
+    var: kubectl_output.stdout_lines

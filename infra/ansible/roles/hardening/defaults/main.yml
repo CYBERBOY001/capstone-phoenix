@@ -1,0 +1,10 @@
+---
+deploy_user: devops
+
+ssh_public_key: "{{ lookup('file', lookup('env','HOME') + '/.ssh/capstone-key.pub') }}"
+
+disable_password_auth: true
+
+disable_root_login: true
+
+install_fail2ban: true

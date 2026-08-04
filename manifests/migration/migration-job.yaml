@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+
+metadata:
+  name: backend-migration
+  namespace: phoenix
+
+spec:
+  backoffLimit: 3
+
+  template:
+    metadata:
+      labels:
+        app: backend-migration
+
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: migration
+
+          image: <YOUR_DOCKERHUB_USERNAME>/phoenix-backend:v1.0.0
+
+          imagePullPolicy: IfNotPresent
+
+        command:
+          - alembic
+          - upgrade
+          - head
+
+          envFrom:
+            - configMapRef:
+                name: phoenix-config
+
+            - secretRef:
+                name: phoenix-secret
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+            limits:
+              cpu: 250m
+              memory: 256Mi
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+
+            capabilities:
+              drop:
+                - ALL
+
+            seccompProfile:
+              type: RuntimeDefault

@@ -1,0 +1,11 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+
+metadata:
+  name: phoenix-high-priority
+
+value: 100000
+
+globalDefault: false
+
+description: "Priority class for Phoenix application"

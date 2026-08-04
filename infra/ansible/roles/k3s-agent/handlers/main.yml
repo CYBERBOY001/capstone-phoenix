@@ -1,0 +1,5 @@
+---
+- name: Restart K3s Agent
+  systemd:
+    name: k3s-agent
+    state: restarted

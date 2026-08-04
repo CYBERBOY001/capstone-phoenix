@@ -1,0 +1,103 @@
+# ===========================================
+# Terraform
+# ===========================================
+.terraform/
+.terraform.lock.hcl
+
+# Terraform State
+*.tfstate
+*.tfstate.*
+terraform.tfstate
+terraform.tfstate.backup
+
+# Terraform Plans
+*.tfplan
+plan.out
+plan.tfplan
+
+# Variable Files (contain secrets)
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Crash Logs
+crash.log
+crash.*.log
+
+# Override Files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI Configuration
+.terraformrc
+terraform.rc
+
+# ===========================================
+# Sensitive Files
+# ===========================================
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+
+# ===========================================
+# Environment Variables
+# ===========================================
+.env
+.env.*
+!.env.example
+
+# ===========================================
+# IDE / Editor
+# ===========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===========================================
+# Operating System
+# ===========================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================================
+# Logs
+# ===========================================
+*.log
+
+# ===========================================
+# Temporary Files
+# ===========================================
+tmp/
+temp/
+.cache/
+
+# ===========================================
+# Backup Files
+# ===========================================
+*.bak
+*.backup
+*.old
+*.orig
+
+# ===========================================
+# Python (if helper scripts are added)
+# ===========================================
+__pycache__/
+*.py[cod]
+
+# ===========================================
+# Node.js (if helper scripts are added)
+# ===========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

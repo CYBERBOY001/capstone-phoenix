@@ -1,0 +1,34 @@
+---
+####################################
+# General
+####################################
+
+project_name: phoenix
+
+environment: production
+
+####################################
+# K3s
+####################################
+
+k3s_version: v1.33.2+k3s1
+
+disable_traefik: true
+
+####################################
+# Deployment User
+####################################
+
+deploy_user: devops
+
+####################################
+# SSH Public Key
+####################################
+
+ssh_public_key: "{{ lookup('file', '/home/mkaey/.ssh/capstone-key.pub') }}"
+
+####################################
+# Kubeconfig
+####################################
+
+kubeconfig_local_path: "./kubeconfig/config"
