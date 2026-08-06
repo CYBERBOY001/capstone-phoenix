@@ -26,6 +26,3 @@ spec:
 
 
 
-          backend-pdb.yaml
-        frontend-pdb.yaml
-           priorityclass.yaml

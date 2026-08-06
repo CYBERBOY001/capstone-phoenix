@@ -14,11 +14,11 @@ spec:
 
   tls:
     - hosts:
-        - taskapp.<YOUR_DOMAIN>
+        - taskapp.com.ng
       secretName: phoenix-tls
 
   rules:
-    - host: taskapp.<YOUR_DOMAIN>
+    - host: taskapp.com.ng
 
       http:
 

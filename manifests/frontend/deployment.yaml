@@ -43,7 +43,7 @@ spec:
       containers:
         - name: frontend
 
-          image: <YOUR_DOCKERHUB_USERNAME>/phoenix-frontend:v1.0.0
+          image: ghcr.io/cyberboy001/taskapp-frontend:v.1.0.2
 
           imagePullPolicy: IfNotPresent
 

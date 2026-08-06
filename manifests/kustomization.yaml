@@ -1,13 +1,61 @@
-resources:
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
+namespace: phoenix
+
+resources:
+  # Namespace
   - namespace.yaml
 
-  - backend/deployment.yaml
+  # Configuration
+  - configmap.yaml
+  - sealed-secret.yaml
+
+  # PostgreSQL
+  - postgres/pvc.yaml
+  - postgres/headless-service.yaml
+  - postgres/statefulset.yaml
+
+  # Backend
+  - backend/serviceaccount.yaml
   - backend/service.yaml
+  - backend/deployment.yaml
+
+  # Frontend
+  - frontend/serviceaccount.yaml
+  - frontend/service.yaml
+  - frontend/deployment.yaml
+
+  # Database Migration
+  - migration/migration-job.yaml
+
+  # Network Policies
+  - networkpolicy/default-deny.yaml
+  - networkpolicy/backend-policy.yaml
+  - networkpolicy/frontend-policy.yaml
+  - networkpolicy/postgres-policy.yaml
+
+  # Pod Disruption Budgets
+  - pdb/priorityclass.yaml
+  - pdb/backend-pdb.yaml
+  - pdb/frontend-pdb.yaml
+
+  # Horizontal Pod Autoscaler
   - backend/hpa.yaml
 
-  - frontend/deployment.yaml
-  - frontend/service.yaml
-  - frontend/hpa.yaml
+  # TLS & Ingress
+  - ingress/clusterissuer.yaml
+  - ingress/certificate.yaml
+  - ingress/ingress.yaml
 
-  - ingress.yaml
+commonLabels:
+  app.kubernetes.io/name: taskapp
+  app.kubernetes.io/part-of: phoenix
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: ghcr.io/cyberboy001/taskapp-frontend
+    newTag: v.1.0.2
+
+  - name: ghcr.io/cyberboy001/taskapp-backend
+    newTag: v.1.0.2

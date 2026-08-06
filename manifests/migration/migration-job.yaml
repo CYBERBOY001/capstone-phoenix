@@ -19,14 +19,14 @@ spec:
       containers:
         - name: migration
 
-          image: <YOUR_DOCKERHUB_USERNAME>/phoenix-backend:v1.0.0
+          image: ghcr.io/cyberboy001/taskapp-backend:v1.0.2
 
           imagePullPolicy: IfNotPresent
 
-        command:
-          - alembic
-          - upgrade
-          - head
+          command:
+            - alembic
+            - upgrade
+            - head
 
           envFrom:
             - configMapRef:
