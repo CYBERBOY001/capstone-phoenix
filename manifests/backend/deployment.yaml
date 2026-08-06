@@ -43,7 +43,7 @@ spec:
       containers:
         - name: backend
 
-          image: ghcr.io/cyberboy001/taskapp-backend:v1.0.2
+          image: ghcr.io/cyberboy001/taskapp-backend:v1.0.3
 
           imagePullPolicy: IfNotPresent
 
