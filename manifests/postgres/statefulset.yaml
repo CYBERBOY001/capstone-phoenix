@@ -38,19 +38,19 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: phoenix-config
-                  key: DB_NAME
+                  key: DATABASE_NAME
 
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
                   name: phoenix-secret
-                  key: DB_USERNAME
+                  key: DATABASE_USER
 
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: phoenix-secret
-                  key: DB_PASSWORD
+                  key: DATABASE_PASSWORD
 
           volumeMounts:
             - name: postgres-storage
