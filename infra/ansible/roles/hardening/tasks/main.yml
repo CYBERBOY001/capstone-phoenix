@@ -71,6 +71,11 @@
     port: "443"
     proto: tcp
 
+- name: Allow K3s internal Traffic
+  community.general.ufw:
+    rule: allow
+    src: "10.0.0.0/16"
+
 - name: Allow Kubernetes API
   community.general.ufw:
     rule: allow

@@ -36,7 +36,7 @@ resource "aws_security_group" "k3s_cluster" {
     from_port   = 6443
     to_port     = 6443
     protocol    = "tcp"
-    self        = true
+    cidr_blocks = var.allowed_ssh_cidrs
   }
 
   

@@ -30,4 +30,4 @@
   become: true
 
   roles:
-    - k3s-agentc
+    - k3s-agent

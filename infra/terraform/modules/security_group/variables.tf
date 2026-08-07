@@ -16,5 +16,4 @@ variable "vpc_id" {
 variable "allowed_ssh_cidrs" {
   description = "CIDR blocks allowed to SSH into the cluster"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
 }

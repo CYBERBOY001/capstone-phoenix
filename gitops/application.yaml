@@ -6,20 +6,18 @@ metadata:
   namespace: argocd
 
 spec:
-
   project: default
 
   source:
-    repoURL: https://github.com/<username>/<repo>.git
+    repoURL: https://github.com/cyberboy001/capstone-phoenix.git
     targetRevision: main
     path: manifests
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: production
+    namespace: phoenix
 
   syncPolicy:
-
     automated:
       prune: true
       selfHeal: true

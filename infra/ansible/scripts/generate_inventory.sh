@@ -1,12 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-CONTROL_PUBLIC=$(terraform output -raw control_plane_public_ip)
-CONTROL_PRIVATE=$(terraform output -raw control_plane_private_ip)
+set -euo pipefail
 
-WORKER_PUBLICS=($(terraform output -json worker_public_ips | jq -r '.[]'))
-WORKER_PRIVATES=($(terraform output -json worker_private_ips | jq -r '.[]'))
+TF_DIR="../terraform"
+INVENTORY="inventory/hosts.ini"
 
-cat > ../ansible/inventory/hosts.ini <<EOF
+CONTROL_PUBLIC=$(terraform -chdir="$TF_DIR" output -raw control_plane_public_ip)
+CONTROL_PRIVATE=$(terraform -chdir="$TF_DIR" output -raw control_plane_private_ip)
+
+readarray -t WORKER_PUBLICS < <(terraform -chdir="$TF_DIR" output -json worker_public_ips | jq -r '.[]')
+readarray -t WORKER_PRIVATES < <(terraform -chdir="$TF_DIR" output -json worker_private_ips | jq -r '.[]')
+
+cat > "$INVENTORY" <<EOF
 [server]
 control-plane ansible_host=${CONTROL_PUBLIC} private_ip=${CONTROL_PRIVATE}
 
@@ -14,12 +19,12 @@ control-plane ansible_host=${CONTROL_PUBLIC} private_ip=${CONTROL_PRIVATE}
 EOF
 
 for i in "${!WORKER_PUBLICS[@]}"; do
-cat >> ../ansible/inventory/hosts.ini <<EOF
+cat >> "$INVENTORY" <<EOF
 worker-$((i+1)) ansible_host=${WORKER_PUBLICS[$i]} private_ip=${WORKER_PRIVATES[$i]}
 EOF
 done
 
-cat >> ../ansible/inventory/hosts.ini <<EOF
+cat >> "$INVENTORY" <<EOF
 
 [k3s_cluster:children]
 server
@@ -27,7 +32,7 @@ agents
 
 [all:vars]
 ansible_user=ubuntu
-ansible_ssh_private_key_file=~/.ssh/capstone-key.pem
+ansible_ssh_private_key_file=/home/mkaey/.ssh/capstone-key.pem
 ansible_python_interpreter=/usr/bin/python3
 EOF
 

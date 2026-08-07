@@ -5,6 +5,8 @@
 *.tfvars
 !*.tfvars.example
 crash.log
+kubeseal-0.38.4-linux-amd64.tar.gz
+kubeseal
 
 # kubeconfig & cluster joins
 kubeconfig
@@ -12,12 +14,12 @@ kubeconfig
 k3s.yaml
 node-token
 *.token
+secret.yaml
 
 # secrets / env
 .env
 .env.*
 !.env.example
-*secret*.yaml
 !*secret*.example.yaml
 *.pem
 *.key
