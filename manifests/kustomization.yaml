@@ -31,7 +31,6 @@ resources:
 
   # Network Policies
   - networkpolicy/allow-dns.yaml
-  - networkpolicy/default-deny.yaml
   - networkpolicy/backend-policy.yaml
   - networkpolicy/frontend-policy.yaml
   - networkpolicy/postgres-policy.yaml
