@@ -29,11 +29,7 @@ resources:
   # Database Migration
   - migration/migration-job.yaml
 
-  # Network Policies
-  - networkpolicy/allow-dns.yaml
-  - networkpolicy/backend-policy.yaml
-  - networkpolicy/frontend-policy.yaml
-  - networkpolicy/postgres-policy.yaml
+
 
   # Pod Disruption Budgets
   - pdb/priorityclass.yaml
