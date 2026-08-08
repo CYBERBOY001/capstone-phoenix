@@ -21,7 +21,15 @@ resource "aws_security_group" "k3s_cluster" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  
+  ingress {
+    description = "internal cluster communication"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
+  }
+
+
   ingress {
     description = "HTTPS"
     from_port   = 443
