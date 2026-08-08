@@ -30,7 +30,7 @@ desktop.ini
 # Kubernetes Secrets (if generated locally)
 # ===========================================
 secret.generated.yaml
-secrets.yaml
+secret.yaml
 
 
 # ===========================================
