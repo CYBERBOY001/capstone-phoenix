@@ -3,7 +3,7 @@ resource "aws_security_group" "k3s_cluster" {
   description = "Security Group for K3s Control Plane and Worker Nodes"
   vpc_id      = var.vpc_id
 
-  
+  # SSH - administrator access only
   ingress {
     description = "SSH from trusted IP"
     from_port   = 22
@@ -12,7 +12,7 @@ resource "aws_security_group" "k3s_cluster" {
     cidr_blocks = var.allowed_ssh_cidrs
   }
 
- 
+  # Public HTTP
   ingress {
     description = "HTTP"
     from_port   = 80
@@ -21,15 +21,7 @@ resource "aws_security_group" "k3s_cluster" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    description = "internal cluster communication"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self        = true
-  }
-
-
+  # Public HTTPS
   ingress {
     description = "HTTPS"
     from_port   = 443
@@ -38,52 +30,25 @@ resource "aws_security_group" "k3s_cluster" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
- 
+  # Kubernetes API - administrator access
   ingress {
-    description = "K3s API Server"
+    description = "Kubernetes API Server"
     from_port   = 6443
     to_port     = 6443
     protocol    = "tcp"
     cidr_blocks = var.allowed_ssh_cidrs
   }
 
-  
+  # All traffic between K3s nodes
   ingress {
-    description = "Flannel VXLAN"
-    from_port   = 8472
-    to_port     = 8472
-    protocol    = "udp"
+    description = "K3s internal cluster communication"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     self        = true
   }
 
-  
-  ingress {
-    description = "Kubelet API"
-    from_port   = 10250
-    to_port     = 10250
-    protocol    = "tcp"
-    self        = true
-  }
-
- 
-  ingress {
-    description = "NodePort Services"
-    from_port   = 30000
-    to_port     = 32767
-    protocol    = "tcp"
-    self        = true
-  }
-
- 
-  ingress {
-    description = "ICMP between cluster nodes"
-    from_port   = -1
-    to_port     = -1
-    protocol    = "icmp"
-    self        = true
-  }
-
- 
+  # Outbound traffic
   egress {
     description = "Allow all outbound traffic"
     from_port   = 0
