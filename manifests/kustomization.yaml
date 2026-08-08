@@ -30,6 +30,7 @@ resources:
   - migration/migration-job.yaml
 
   # Network Policies
+  - networkpolicy/allow-dns.yaml
   - networkpolicy/default-deny.yaml
   - networkpolicy/backend-policy.yaml
   - networkpolicy/frontend-policy.yaml
