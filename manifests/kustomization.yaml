@@ -51,7 +51,7 @@ commonLabels:
 
 images:
   - name: ghcr.io/cyberboy001/taskapp-frontend
-    newTag: v.1.0.7
+    newTag: v.1.0.8
 
   - name: ghcr.io/cyberboy001/taskapp-backend
     newTag: v1.0.3
