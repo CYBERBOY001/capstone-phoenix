@@ -43,7 +43,7 @@ spec:
       containers:
         - name: frontend
 
-          image: ghcr.io/cyberboy001/taskapp-frontend:v.1.0.9
+          image: ghcr.io/cyberboy001/taskapp-frontend:v.1.0.10
 
           imagePullPolicy: IfNotPresent
 
