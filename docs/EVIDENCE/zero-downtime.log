@@ -1,0 +1,20 @@
+Script started on 2026-08-11 10:30:55+00:00 [TERM="xterm-256color" TTY="/dev/pts/0" COLUMNS="228" LINES="15"]
+ubuntu@ip-10-0-1-120:~$ kubectl rollout restart deployment/frontend -n phoenix
+deployment.apps/frontend restarted
+ubuntu@ip-10-0-1-120:~$ kubectl rollout status deployment/frontend -n phoenix
+Waiting for deployment "frontend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "frontend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "frontend" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "frontend" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "frontend" rollout to finish: 1 old replicas are pending termination...
+deployment "frontend" successfully rolled out
+
+ubuntu@ip-10-0-1-120:~$ while true; do
+    date '+%H:%M:%S'
+    curl -sk -o /dev/null -w "HTTP %{http_code}\n" https://taskapp.com.ng/
+    sleep 1
+done
+10:35:29
+HTTP 200
+10:35:30
+HTTP 200

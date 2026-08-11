@@ -1,2 +1,38 @@
-NAME                          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
-postgres-storage-postgres-0   Bound    pvc-6d745469-cc69-4437-8c95-9d72700b74a9   10Gi       RWO            local-path     <unset>                 33h   Filesystem
+Script started on 2026-08-11 10:01:35+00:00 [TERM="xterm-256color" TTY="/dev/pts/0" COLUMNS="228" LINES="11"]
+ubuntu@ip-10-0-1-120:~$ kubectl exec -it postgres-0 -n phoenix -- psql -U postgres
+psql (16.4 (Debian 16.4-1.pgdg120+2))
+Type "help" for help.
+
+postgres=# CREATE TABLE IF NOT EXISTS persistence_test (
+    id SERIAL PRIMARY KEY,
+    message TEXT
+);
+
+INSERT INTO persistence_test (message)
+VALUES ('PVC persistence test');
+
+SELECT * FROM persistence_test;
+NOTICE:  relation "persistence_test" already exists, skipping
+CREATE TABLE
+INSERT 0 1
+ id |       message
+----+----------------------
+  1 | PVC persistence test
+  2 | PVC persistence test
+(2 rows)
+
+postgres=# \q
+ubuntu@ip-10-0-1-120:~$ kubectl delete pod postgres-0 -n phoenix
+pod "postgres-0" deleted
+ubuntu@ip-10-0-1-120:~$ kubectl exec -it postgres-0 -n phoenix -- \
+  psql -U postgres -c "SELECT * FROM persistence_test;"
+ id |       message
+----+----------------------
+  1 | PVC persistence test
+  2 | PVC persistence test
+(2 rows)
+
+ubuntu@ip-10-0-1-120:~$ exit
+exit
+
+Script done on 2026-08-11 10:02:57+00:00 [COMMAND_EXIT_CODE="0"]
