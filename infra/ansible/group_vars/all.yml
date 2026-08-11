@@ -36,4 +36,4 @@ kubeconfig_local_path: "./kubeconfig/config"
 write-kubeconfig-mode: "0644"
 
 tls-san:
-  - 100.54.230.114
+  - 3.238.194.251
