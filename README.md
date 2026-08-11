@@ -20,8 +20,8 @@ The project demonstrates modern DevOps practices including:
 ---
 
 # 🏗️ Architecture
-![Architecture Diagram](docs/EVIDENCE/Arch.png)
-![APP-IMAGE](docs/EVIDENCE/web-application.png)
+<img alt="Architecture Diagram" src="docs/EVIDENCE/Arch.png"/>
+<img alt="APP-IMAGE" src="docs/EVIDENCE/web-application.png"/>
 
 # 🛠️ Technology Stack
 
