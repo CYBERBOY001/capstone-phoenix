@@ -1,0 +1,70 @@
+Script started on 2026-08-11 17:12:57+01:00 [TERM="xterm-256color" TTY="/dev/pts/3" COLUMNS="228" LINES="40"]
+[?2004h]0;mkaey@MKAEY: ~/capstone-phoenix[01;32mmkaey@MKAEY[00m:[01;34m~/capstone-phoenix[00m$ [7m kubectl describe pod backend-fdcdcdcf6-4bn6d  -n phoenix[27m[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C[C kubectl describe pod backend-fdcdcdcf6-4bn6d  -n phoenix
+[?2004lName:             backend-fdcdcdcf6-4bn6d
+Namespace:        phoenix
+Priority:         0
+Service Account:  default
+Node:             ip-10-0-2-57/10.0.2.57
+Start Time:       Tue, 11 Aug 2026 13:57:00 +0100
+Labels:           app=backend
+                  app.kubernetes.io/managed-by=kustomize
+                  app.kubernetes.io/name=taskapp
+                  app.kubernetes.io/part-of=phoenix
+                  pod-template-hash=fdcdcdcf6
+Annotations:      <none>
+Status:           Running
+IP:               10.42.1.62
+IPs:
+  IP:           10.42.1.62
+Controlled By:  ReplicaSet/backend-fdcdcdcf6
+Containers:
+  backend:
+    Container ID:    containerd://754f795beaa1af9feb67ddd5650f488eba465c86d86653d2ef50737c3bfab1df
+    Image:           ghcr.io/cyberboy001/taskapp-backend:v1.0.3
+    Image ID:        ghcr.io/cyberboy001/taskapp-backend@sha256:2bd2808944a5e0f8d7e9142a07d59efd8f431b925aa84c6b96b00ed96e38de7b
+    Port:            5000/TCP
+    Host Port:       0/TCP
+    SeccompProfile:  RuntimeDefault
+    State:           Running
+      Started:       Tue, 11 Aug 2026 13:57:02 +0100
+    Ready:           True
+    Restart Count:   0
+    Limits:
+      cpu:     500m
+      memory:  512Mi
+    Requests:
+      cpu:      250m
+      memory:   256Mi
+    Liveness:   http-get http://:5000/api/health delay=30s timeout=1s period=20s #success=1 #failure=3
+    Readiness:  http-get http://:5000/api/health delay=10s timeout=1s period=10s #success=1 #failure=3
+    Startup:    http-get http://:5000/api/health delay=0s timeout=1s period=10s #success=1 #failure=30
+    Environment Variables from:
+      phoenix-config  ConfigMap  Optional: false
+      phoenix-secret  Secret     Optional: false
+    Environment:      <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-hx7m9 (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  kube-api-access-hx7m9:
+    Type:                     Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:   3607
+    ConfigMapName:            kube-root-ca.crt
+    Optional:                 false
+    DownwardAPI:              true
+QoS Class:                    Burstable
+Node-Selectors:               <none>
+Tolerations:                  node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                              node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Topology Spread Constraints:  kubernetes.io/hostname:DoNotSchedule when max skew 1 is exceeded for selector app=backend,app.kubernetes.io/managed-by=kustomize,app.kubernetes.io/name=taskapp,app.kubernetes.io/part-of=phoenix
+Events:                       <none>
+[?2004h]0;mkaey@MKAEY: ~/capstone-phoenix[01;32mmkaey@MKAEY[00m:[01;34m~/capstone-phoenix[00m$ exir[Kt
+[?2004lexit
+
+Script done on 2026-08-11 17:13:11+01:00 [COMMAND_EXIT_CODE="0"]

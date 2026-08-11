@@ -6,11 +6,11 @@
 >
 > **Important:** Replace placeholders such as `<NODE_NAME>` and `<POD_NAME>` with values from the cluster. Never commit Kubernetes Secrets, private keys, kubeconfig files, or cloud credentials.
 
+---
 
+## 1. Prerequisites & Environment Setup
 
-# 2. Prerequisites
-
-Verify the tools:
+Verify required CLI tools:
 
 ```bash
 kubectl version --client
@@ -19,79 +19,97 @@ git --version
 terraform -version
 ansible --version
 ```
+
+Authenticate AWS CLI:
+
 ```bash
-aws configure          # Authenticate and set default region/output
-aws sts get-caller-identity # Confirm active account, IAM user/role, and ARN
-
-
+aws configure
+aws sts get-caller-identity
 ```
-``` bash
+
+Configure Terraform environment:
+
+```bash
 cd infra/terraform
 cp terraform.tfvars.example terraform.tfvars
 ```
 
- Edit the terraform.tfvar
+Edit `terraform.tfvars`:
 
-``` bash
-project_name        = 
-environment         = 
-aws_region          = 
+```terraform
+project_name        = ""
+environment         = ""
+aws_region          = ""
 
-vpc_cidr            = 
-public_subnet_cidrs = 
-availability_zones  = 
+vpc_cidr            = ""
+public_subnet_cidrs = []
+availability_zones  = []
 
-ami_id              = 
-instance_type       = 
-worker_count        = 
-key_name            = 
+ami_id              = ""
+instance_type       = ""
+worker_count        = 2
+key_name            = ""
 
-allowed_ssh_cidrs   = 
+allowed_ssh_cidrs   = []
 ```
+
+Provision infrastructure:
 
 ```bash
 terraform init
-terraform fmt 
+terraform fmt
 terraform validate
-terraform plan -var-file="terraform.tfvar" -out="capstone"
+terraform plan -var-file="terraform.tfvars" -out="capstone"
 terraform apply capstone
 ```
 
-Edit the tls-san: ip in group_vars/all.yml to control plane public ip
+Update `tls-san: ip` in `group_vars/all.yml` to the Control Plane public IP.
 
-Test all 3 nodes before proceeding:
+Verify SSH connectivity to all 3 nodes before proceeding:
+
 ```bash
-ssh -i /.ssh/capstone-key.pem ubuntu@<node-public-ip>
+ssh -i ~/.ssh/capstone-key.pem ubuntu@<node-public-ip>
 ```
 
-Copy terraform outputs to hosts.ini
+Provision cluster with Ansible:
+
 ```bash
- cd  infra/ansible
+cd infra/ansible
 ./scripts/generate_inventory.sh
 ansible-playbook -i inventory/hosts.ini playbook/site.yml
-
 ```
-Export kubeconfig
+
+Export `kubeconfig`:
+
 ```bash
 export KUBECONFIG=/home/mkaey/capstone-phoenix/infra/ansible/kubeconfig/config
-kubectl get node -o
+kubectl get nodes -o wide
 ```
-Install nginx-ingress,sealed-secrets,cert-manager, clusterissuer and Agrocd on your cluster
+
+---
+
+## 2. Core Infrastructure Deployment
+
+Install NGINX Ingress, Sealed Secrets, cert-manager, ClusterIssuer, and Argo CD:
+
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
- 
-kubectl apply \
--f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
+
+kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
+
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+
 kubectl apply -f manifests/ingress/clusterissuer.yaml
 
-kubectl create namespace agrocd
+kubectl create namespace argocd
+
 kubectl apply --server-side \
--f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml \
--n argocd
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml \
+  -n argocd
 ```
 
-install kubeseal locally
+Install `kubeseal` locally and generate encrypted secrets:
+
 ```bash
 VERSION=$(curl -fsSL https://api.github.com/repos/bitnami-labs/sealed-secrets/releases/latest | jq -r .tag_name)
 
@@ -100,97 +118,93 @@ curl -LO https://github.com/bitnami-labs/sealed-secrets/releases/download/${VERS
 tar -xzf kubeseal-*.tar.gz
 
 sudo install kubeseal /usr/local/bin/
+```
 
+```bash
 kubeseal \
   --controller-name=sealed-secrets-controller \
   --controller-namespace=kube-system \
   --kubeconfig "$HOME/capstone-phoenix/infra/ansible/kubeconfig/config" \
   -f secret.yaml \
   -w sealed-secret.yaml
-```  
-NOTE: create a dns record with your control plane ip
-in dns management dashboard of domain name provider. edit your ingress manifest host name to match your own domain and also docker images in the
-frontend,backend amd kustomization mainfest. if you have your own docker image to use.
-Then push changes to github for agrocd to use update manifest aslo
+```
 
-```bash 
+> **Note:**
+>
+> 1. Create an `A` record pointing to your Control Plane IP in your DNS management dashboard.
+>
+> 2. Update your Ingress manifest hostname and Docker image references in the frontend, backend, and Kustomization manifests to reflect your custom domain and container registry.
+>
+> 3. Push all changes to GitHub for Argo CD reconciliation.
+
+Deploy application via GitOps:
+
+```bash
 kubectl apply -f gitops/application.yaml
 ```
 
+---
 
+## 3. GitOps Verification (Argo CD)
 
-Check Argo CD applications:
+Verify application sync status:
 
 ```bash
 kubectl get applications -n argocd
 ```
 
-Expected:
+**Expected output:**
 
 ```text
 NAME      SYNC STATUS   HEALTH STATUS
 taskapp   Synced        Healthy
 ```
 
-Detailed:
+Inspect application details:
 
 ```bash
 kubectl describe application taskapp -n argocd
-```
 
-If the Argo CD CLI is available:
-
-```bash
+# Alternatively, via Argo CD CLI:
 argocd app get taskapp
 ```
 
-Expected:
+### Scaling Workloads (GitOps Workflow)
 
-```text
-Synced
-Healthy
-```
-bump frontend replicas 2→3
-After changing manifests:
+To scale frontend replicas (e.g., 2 → 3), update the manifest in Git:
 
 ```bash
 git status
 git add .
-git commit -m "Update TaskApp deployment"
+git commit -m "Update TaskApp frontend replicas to 3"
 git push
 ```
 
-Then:
+Monitor reconciliation:
 
 ```bash
 kubectl get applications -n argocd -w
 ```
 
-Prefer Git commits over manual `kubectl edit` or `kubectl scale` changes because Argo CD is the GitOps source of truth.
+*Prefer Git commits over manual* `kubectl edit` *or* `kubectl scale` *commands; Argo CD serves as the single source of truth.*
 
 ---
 
+## 4. Workload Topology Inspection
 
-
-
-
-
-
-For frontend:
+Check frontend pods:
 
 ```bash
 kubectl get pods -n phoenix -l app=frontend -o wide
 ```
 
-For backend:
+Check backend pods:
 
 ```bash
 kubectl get pods -n phoenix -l app=backend -o wide
 ```
 
-Look at the `NODE` column.
-
-Useful deployment inspection:
+Inspect deployment specifications:
 
 ```bash
 kubectl describe deployment frontend -n phoenix
@@ -199,52 +213,30 @@ kubectl describe deployment backend -n phoenix
 
 ---
 
-# 6. Backend Troubleshooting
+## 5. Backend Troubleshooting
 
-## Check backend pods
+Check pod health and logs:
 
 ```bash
 kubectl get pods -n phoenix -l app=backend -o wide
-```
-
-## View current logs
-
-```bash
 kubectl logs -n phoenix <BACKEND_POD>
-```
-
-## View logs from the previous crashed container
-
-```bash
 kubectl logs -n phoenix <BACKEND_POD> --previous
-```
-
-## Follow logs
-
-```bash
 kubectl logs -f -n phoenix <BACKEND_POD>
-```
-
-## Describe backend pod
-
-```bash
 kubectl describe pod -n phoenix <BACKEND_POD>
 ```
 
-## Test backend Service from inside the cluster
+Test cluster-internal Service connectivity:
 
 ```bash
+# Root endpoint test
 kubectl run backend-debug \
   --rm -it \
   --restart=Never \
   --image=curlimages/curl \
   -n phoenix \
   -- curl -v http://backend:5000/
-```
 
-Test the API:
-
-```bash
+# API endpoint test
 kubectl run backend-debug \
   --rm -it \
   --restart=Never \
@@ -253,91 +245,54 @@ kubectl run backend-debug \
   -- curl -v http://backend:5000/api/
 ```
 
-A `404` is not necessarily a networking failure. It can simply mean that `/api/` is not an implemented backend route. Test an endpoint that actually exists in the Flask application.
+> **Note:** A `404` status code indicates network reachability. Ensure you test endpoints actually defined in the application routing (e.g., Flask routes).
 
 ---
 
-# 7. Frontend Troubleshooting
+## 6. Frontend Troubleshooting
 
-## Check frontend pods
+Inspect pods and logs:
 
 ```bash
 kubectl get pods -n phoenix -l app=frontend -o wide
-```
-
-## Logs
-
-```bash
 kubectl logs -n phoenix <FRONTEND_POD>
-```
-
-Previous crash:
-
-```bash
 kubectl logs -n phoenix <FRONTEND_POD> --previous
 ```
 
-## NGINX configuration test
+Test NGINX configurations:
 
 ```bash
+# Validate syntax
 kubectl exec -n phoenix deploy/frontend -- nginx -t
+
+# Inspect active configurations
+kubectl exec -n phoenix deploy/frontend -- cat /etc/nginx/conf.d/default.conf
+kubectl exec -n phoenix deploy/frontend -- cat /etc/nginx/nginx.conf
 ```
 
-Expected:
-
-```text
-syntax is ok
-test is successful
-```
-
-## Check NGINX configuration
-
-```bash
-kubectl exec -n phoenix deploy/frontend -- \
-  cat /etc/nginx/conf.d/default.conf
-```
-
-Check the main NGINX configuration:
-
-```bash
-kubectl exec -n phoenix deploy/frontend -- \
-  cat /etc/nginx/nginx.conf
-```
-
-## Test DNS from the frontend pod
+Test internal DNS resolution and service routing:
 
 ```bash
 kubectl exec -n phoenix deploy/frontend -- \
   nslookup backend.phoenix.svc.cluster.local
-```
 
-Expected:
-
-```text
-Name: backend.phoenix.svc.cluster.local
-Address: <backend-service-cluster-ip>
-```
-
-## Test backend connectivity from frontend
-
-```bash
 kubectl exec -n phoenix deploy/frontend -- \
   wget -S -O- http://backend.phoenix.svc.cluster.local:5000/
 ```
 
-If `/` returns `404`, test a real API endpoint.
-
 ---
 
-# 8. NGINX Frontend Configuration
+## 7. NGINX Frontend Architecture
 
-The frontend container is a multi-stage image:
+The frontend uses a multi-stage Docker file:
 
-1. Node builds the React/Vite application.
-2. NGINX serves only `/dist`.
-3. NGINX proxies `/api/` to the Kubernetes backend Service.
+1. **Build:** Node compiles the React/Vite application.
 
-The important API proxy pattern is:
+2. **Serving:** NGINX serves static files from `/dist`.
+
+3. **Proxy:** NGINX proxies `/api/` calls to the backend Service.
+
+Proxy configuration snippet:
 
 ```nginx
 location /api/ {
@@ -352,82 +307,53 @@ location /api/ {
 }
 ```
 
-Do not put Markdown fences or literal text such as  nginx  inside the actual NGINX configuration.
-
 ---
 
-# 9. NGINX Non-Root Container Troubleshooting
+## 8. Non-Root Container Security
 
-The frontend container runs as:
+The frontend container executes under non-privileged credentials:
 
 ```text
 uid=101(nginx)
 gid=101(nginx)
 ```
 
-If NGINX reports:
+If NGINX outputs the following error:
 
 ```text
 open() "/run/nginx.pid" failed (13: Permission denied)
 ```
 
-the NGINX PID path needs to be writable by the non-root user.
-
-Inspect:
-
-```bash
-kubectl exec -n phoenix deploy/frontend -- \
-  cat /etc/nginx/nginx.conf
-```
-
-A non-root configuration should use a writable PID location, for example:
+Ensure the PID path points to a directory writable by non-root users inside `nginx.conf`:
 
 ```nginx
 pid /tmp/nginx.pid;
 ```
 
-Temporary runtime test:
-
-```bash
-kubectl exec -n phoenix deploy/frontend -- nginx -t
-```
-
 ---
 
-# 10. Kubernetes Service Discovery / DNS
+## 9. Kubernetes Service Discovery & DNS
 
-Check CoreDNS:
+Verify CoreDNS operational status:
 
 ```bash
 kubectl get pods -n kube-system -l k8s-app=kube-dns
-```
-
-Check the DNS Service:
-
-```bash
 kubectl get svc -n kube-system kube-dns
-```
-
-Check CoreDNS logs:
-
-```bash
 kubectl logs -n kube-system -l k8s-app=kube-dns
 ```
 
-Test Kubernetes DNS:
+Execute DNS lookup tests:
 
 ```bash
+# External cluster test
 kubectl run dns-test \
   --rm -it \
   --restart=Never \
   --image=busybox:1.36 \
   -n phoenix \
   -- nslookup kubernetes.default.svc.cluster.local
-```
 
-Test backend DNS:
-
-```bash
+# Service resolution test
 kubectl run dns-test \
   --rm -it \
   --restart=Never \
@@ -438,275 +364,136 @@ kubectl run dns-test \
 
 ---
 
-# 11. Ingress
+## 10. Ingress Configuration & Diagnostics
 
-## Check ingress
+Inspect Ingress resource state:
 
 ```bash
 kubectl get ingress -n phoenix
-```
-
-## Detailed ingress
-
-```bash
 kubectl describe ingress phoenix-ingress -n phoenix
-```
-
-## YAML
-
-```bash
 kubectl get ingress phoenix-ingress -n phoenix -o yaml
 ```
 
-Expected host:
+**Expected routing setup:**
 
-```text
-taskapp.com.ng
-```
+* **Host:** `taskapp.com.ng`
+* **Paths:** `/` → `frontend:80`, `/api` → `backend:5000`
 
-Expected routes:
-
-```text
-/       -> frontend:80
-/api    -> backend:5000
-```
-
-## Check ingress controller
+Inspect Ingress Controller status and logs:
 
 ```bash
 kubectl get pods -n ingress-nginx -o wide
 kubectl get svc -n ingress-nginx -o wide
 kubectl get ingressclass
-```
-
-Ingress controller logs:
-
-```bash
-kubectl logs -n ingress-nginx \
-  deployment/ingress-nginx-controller
+kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
 ```
 
 ---
 
-# 12. DNS Verification
+## 11. External DNS Verification
 
-The public DNS record for:
-
-```text
-taskapp.com.ng
-```
-
-must resolve to the current public ingress/load-balancer IP.
-
-Check authoritative nameservers:
+Verify domain resolution against authoritative and public resolvers:
 
 ```bash
+# Authoritative resolvers
 dig +short taskapp.com.ng @nsa.whogohost.com
 dig +short taskapp.com.ng @nsb.whogohost.com
-```
 
-Check public resolvers:
-
-```bash
+# Public resolvers
 dig +short taskapp.com.ng @8.8.8.8
 dig +short taskapp.com.ng @1.1.1.1
-```
 
-Check local resolution:
-
-```bash
+# Local system resolver
 resolvectl query taskapp.com.ng
 ```
 
-If different public IPs appear, investigate DNS propagation/caching and the authoritative DNS records.
-
 ---
 
-# 13. TLS / cert-manager
+## 12. TLS Certificate Management (cert-manager)
 
-## ClusterIssuer
+Inspect issuers, certificates, and ACME challenge states:
 
 ```bash
 kubectl get clusterissuer
-```
-
-Expected:
-
-```text
-letsencrypt-prod   True
-```
-
-## Certificate
-
-```bash
 kubectl get certificate -n phoenix
-```
-
-Detailed:
-
-```bash
 kubectl describe certificate phoenix-tls -n phoenix
-```
 
-## CertificateRequest
-
-```bash
 kubectl get certificaterequest -n phoenix
-```
-
-## ACME Orders
-
-```bash
 kubectl get order -n phoenix
-```
-
-## ACME Challenges
-
-```bash
 kubectl get challenge -n phoenix
-```
-
-Detailed challenge:
-
-```bash
 kubectl describe challenge -n phoenix
+kubectl logs -n cert-manager deployment/cert-manager
 ```
 
-## cert-manager logs
-
-```bash
-kubectl logs -n cert-manager \
-  deployment/cert-manager
-```
-
-## Verify the certificate externally
+Verify TLS handshakes externally:
 
 ```bash
 curl -vI https://taskapp.com.ng
-```
-
-Look for:
-
-```text
-subject: CN=taskapp.com.ng
-issuer: Let's Encrypt
-SSL certificate verify ok
-```
-
-Check the application:
-
-```bash
-curl -I https://taskapp.com.ng
-```
-
-Health endpoint:
-
-```bash
 curl -I https://taskapp.com.ng/healthz
 ```
 
 ---
 
-# 14. HTTP-01 ACME Troubleshooting
+## 13. HTTP-01 ACME Challenge Diagnostics
 
-The HTTP-01 challenge requires external access to:
+The HTTP-01 challenge expects accessibility at:
 
 ```text
 http://taskapp.com.ng/.well-known/acme-challenge/<TOKEN>
 ```
 
-Check the temporary solver:
+Inspect transient solver resources:
 
 ```bash
 kubectl get ingress -n phoenix | grep acme
 kubectl get pods -n phoenix | grep acme
-```
-
-Check challenge:
-
-```bash
 kubectl describe challenge -n phoenix
 ```
 
-Test from outside the cluster:
+Test challenge resolution externally:
 
 ```bash
-curl -v --max-time 10 \
-  http://taskapp.com.ng/.well-known/acme-challenge/<TOKEN>
-```
+# Via Domain
+curl -v --max-time 10 http://taskapp.com.ng/.well-known/acme-challenge/<TOKEN>
 
-The response should be HTTP `200` and contain the expected challenge value.
-
-Test directly against the ingress public IP:
-
-```bash
+# Direct via Ingress IP
 curl -v --max-time 10 \
   -H "Host: taskapp.com.ng" \
   http://<PUBLIC_IP>/.well-known/acme-challenge/<TOKEN>
 ```
 
-Do not confuse an old/stale DNS IP with the current EC2/load-balancer IP.
-
 ---
 
+## 14. Image Release Workflows
 
-
-# 16. Deploy a New Frontend Image
-
-Build:
+### Frontend Image Build & Deploy
 
 ```bash
 docker build -t ghcr.io/cyberboy001/taskapp-frontend:<VERSION> .
-```
 
-Test locally:
+# Validate locally
+docker run --rm ghcr.io/cyberboy001/taskapp-frontend:<VERSION> nginx -t
 
-```bash
-docker run --rm \
-  ghcr.io/cyberboy001/taskapp-frontend:<VERSION> \
-  nginx -t
-```
-
-Login to GHCR:
-
-```bash
+# Publish to Registry
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
-```
-
-Push:
-
-```bash
 docker push ghcr.io/cyberboy001/taskapp-frontend:<VERSION>
 ```
 
-Update the Kubernetes manifest/Kustomize image tag in Git, then commit and push.
-
-Verify:
+Update tag in Git repository, then verify rollout:
 
 ```bash
 kubectl get pods -n phoenix
 kubectl rollout status deployment/frontend -n phoenix
 ```
 
----
-
-# 17. Deploy a New Backend Image
-
-Build:
+### Backend Image Build & Deploy
 
 ```bash
 docker build -t ghcr.io/cyberboy001/taskapp-backend:<VERSION> .
-```
-
-Push:
-
-```bash
 docker push ghcr.io/cyberboy001/taskapp-backend:<VERSION>
 ```
 
-Update the image tag in Git.
-
-Verify:
+Update tag in Git repository, then verify rollout:
 
 ```bash
 kubectl rollout status deployment/backend -n phoenix
@@ -715,278 +502,75 @@ kubectl get pods -n phoenix -l app=backend -o wide
 
 ---
 
+## 15. Persistence & Failover Testing (PostgreSQL)
 
-
-# 19. PostgreSQL / PVC Persistence Test
-
-Find the PostgreSQL pod:
+Inspect state and storage bindings:
 
 ```bash
 kubectl get pods -n phoenix -l app=postgres -o wide
-```
-
-Check PVC:
-
-```bash
 kubectl get pvc -n phoenix
 ```
 
-Write test data using the application's database credentials:
+Execute stateful data modification test:
 
 ```bash
+# Insert record
 kubectl exec -it postgres-0 -n phoenix -- \
   psql -U <DATABASE_USER> -d <DATABASE_NAME> \
   -c "INSERT INTO tasks (title) VALUES ('pvc-persistence-test');"
-```
 
-Delete the PostgreSQL pod:
-
-```bash
+# Simulate Pod failure
 kubectl delete pod postgres-0 -n phoenix
-```
 
-Watch recovery:
-
-```bash
+# Monitor recovery
 kubectl get pods -n phoenix -o wide -w
-```
 
-Verify the data:
-
-```bash
+# Validate persistence
 kubectl exec -it postgres-0 -n phoenix -- \
   psql -U <DATABASE_USER> -d <DATABASE_NAME> \
   -c "SELECT * FROM tasks WHERE title='pvc-persistence-test';"
 ```
 
-Verify PVC:
+---
 
-```bash
-kubectl get pvc -n phoenix
-```
+## 16. Common Failure Scenarios
 
-The PVC should remain `Bound`.
+### Frontend CrashLoopBackOff
+
+* Check error with `kubectl logs -n phoenix <FRONTEND_POD> --previous`.
+
+* **`unknown directive "nginx"`:** Text/Markdown rendering error in configuration files.
+
+* **`Permission denied`** on PID file: Running as non-root user. Update configuration to write to a non-privileged location (e.g., `pid /tmp/nginx.pid;`).
+
+### NGINX Service Resolution Failures
+
+* Error: `host not found in upstream "backend.phoenix.svc.cluster.local"`
+
+* Verify Kubernetes backend Service status (`kubectl get svc backend -n phoenix`).
+
+* Verify intra-cluster DNS configuration via `busybox` or `curl` test pods.
+
+### Route 404 Exceptions
+
+* A `404` response confirms reachability via Ingress/Service routing; verify application-level endpoints and backend route handling explicitly.
 
 ---
 
+## 17. Operational Checklists
 
-
-# 27. Common Failure: Frontend CrashLoopBackOff
-
-Check:
+### Safe Maintenance Workflow
 
 ```bash
-kubectl get pods -n phoenix
-kubectl logs -n phoenix <FRONTEND_POD> --previous
-```
-
-If you see:
-
-```text
-unknown directive "nginx"
-```
-
-inspect:
-
-```bash
-kubectl exec -n phoenix <FRONTEND_POD> -- \
-  cat /etc/nginx/nginx.conf
-```
-
-Check for accidental Markdown/code-fence text in the NGINX file.
-
-If you see:
-
-```text
-open() "/run/nginx.pid" failed (13: Permission denied)
-```
-
-the container is running as non-root and NGINX is trying to write its PID file somewhere not writable.
-
-Use a writable PID path such as:
-
-```nginx
-pid /tmp/nginx.pid;
-```
-
-Then rebuild and push the image.
-
----
-
-# 28. Common Failure: NGINX Cannot Resolve Backend
-
-Error:
-
-```text
-host not found in upstream "backend.phoenix.svc.cluster.local"
-```
-
-Check Service:
-
-```bash
-kubectl get svc backend -n phoenix
-```
-
-Check DNS:
-
-```bash
-kubectl run dns-debug \
-  --rm -it \
-  --restart=Never \
-  --image=busybox:1.36 \
-  -n phoenix \
-  -- nslookup backend.phoenix.svc.cluster.local
-```
-
-Check CoreDNS:
-
-```bash
-kubectl get pods -n kube-system -l k8s-app=kube-dns
-kubectl logs -n kube-system -l k8s-app=kube-dns
-```
-
-If DNS works inside the cluster but `docker run ... nginx -t` fails on the local machine, that is expected: the local Docker container is outside the Kubernetes DNS domain.
-
-Validate Kubernetes NGINX configuration from inside the cluster:
-
-```bash
-kubectl exec -n phoenix deploy/frontend -- nginx -t
-```
-
----
-
-# 29. Common Failure: API Returns 404
-
-Test the backend directly:
-
-```bash
-kubectl run api-debug \
-  --rm -it \
-  --restart=Never \
-  --image=curlimages/curl \
-  -n phoenix \
-  -- curl -v http://backend:5000/
-```
-
-Test the exact API endpoint:
-
-```bash
-kubectl run api-debug \
-  --rm -it \
-  --restart=Never \
-  --image=curlimages/curl \
-  -n phoenix \
-  -- curl -v http://backend:5000/<REAL_API_ENDPOINT>
-```
-
-Then test through Ingress:
-
-```bash
-curl -v https://taskapp.com.ng/<API_ENDPOINT>
-```
-
-A backend `404` proves that traffic reached the backend but the requested route does not exist.
-
----
-
-# 30. Common Failure: Certificate Not Ready
-
-```bash
-kubectl get certificate -n phoenix
-kubectl get order -n phoenix
-kubectl get challenge -n phoenix
-kubectl describe challenge -n phoenix
-```
-
-Check DNS:
-
-```bash
-dig +short taskapp.com.ng @8.8.8.8
-dig +short taskapp.com.ng @1.1.1.1
-```
-
-Check HTTP-01:
-
-```bash
-curl -v http://taskapp.com.ng/.well-known/acme-challenge/<TOKEN>
-```
-
-Check ingress:
-
-```bash
-kubectl get ingress -n phoenix
-kubectl get svc -n ingress-nginx -o wide
-```
-
-When fixed, certificate should eventually show:
-
-```text
-READY   True
-```
-
-Verify:
-
-```bash
-kubectl get certificate -n phoenix
-curl -vI https://taskapp.com.ng
-```
-
-
-
-# 34. Useful Cluster Commands
-
-```bash
-kubectl get nodes -o wide
-kubectl get pods -A
-kubectl get svc -A
-kubectl get ingress -A
-kubectl get pvc -A
-kubectl get certificate -A
-kubectl get hpa -A
-kubectl get jobs -A
-```
-
-Events:
-
-```bash
-kubectl get events -n phoenix --sort-by='.lastTimestamp'
-```
-
-Resource usage:
-
-```bash
-kubectl top nodes
-kubectl top pods -n phoenix
-```
-
----
-
-# 35. Safe Maintenance Checklist
-
-Before maintenance:
-
-```bash
+# Pre-maintenance assessment
 kubectl get nodes
 kubectl get pods -n phoenix -o wide
 kubectl get deployment -n phoenix
 kubectl get certificate -n phoenix
 kubectl get hpa -n phoenix
 kubectl get applications -n argocd
-```
 
-Confirm:
-
-- All required nodes are Ready.
-- Backend replicas are healthy.
-- Frontend replicas are healthy.
-- PostgreSQL is Running.
-- PVC is Bound.
-- Certificate is Ready.
-- Argo CD is Synced and Healthy.
-
-After maintenance:
-
-```bash
+# Post-maintenance validation
 kubectl get nodes
 kubectl get pods -n phoenix -o wide
 kubectl get pvc -n phoenix
@@ -996,128 +580,46 @@ kubectl get applications -n argocd
 curl -I https://taskapp.com.ng
 ```
 
+### Final Acceptance Checklist
+
+| **Component**         | **Verification Command**                            | **Expected Result**                    |
+| --------------------- | --------------------------------------------------- | -------------------------------------- |
+| **Nodes & Workloads** | `kubectl get nodes` / `kubectl get pods -n phoenix` | All nodes `Ready`; Workloads `Running` |
+| **HTTP/HTTPS**        | `curl -I https://taskapp.com.ng`                    | `HTTP/2 200`                           |
+| **Certificates**      | `kubectl get certificate -n phoenix`                | `READY: True`                          |
+| **Ingress**           | `kubectl get ingress -n phoenix`                    | Domain routed correctly                |
+| **GitOps Engine**     | `kubectl get applications -n argocd`                | `Synced` / `Healthy`                   |
+
 ---
 
-# 36. Final Acceptance Checklist
-
-## Kubernetes
+## 18. Quick Reference Commands
 
 ```bash
-kubectl get nodes
-kubectl get pods -n phoenix
-kubectl get pods -n phoenix -o wide
-```
-
-All required workloads should be healthy.
-
-## Application
-
-```bash
-curl -I https://taskapp.com.ng
-curl -I https://taskapp.com.ng/healthz
-```
-
-Expected:
-
-```text
-HTTP/2 200
-```
-
-## TLS
-
-```bash
-kubectl get certificate -n phoenix
-```
-
-Expected:
-
-```text
-READY   True
-```
-
-## Ingress
-
-```bash
-kubectl get ingress -n phoenix
-```
-
-Expected host:
-
-```text
-taskapp.com.ng
-```
-
-## GitOps
-
-```bash
-kubectl get applications -n argocd
-```
-
-Expected:
-
-```text
-taskapp   Synced   Healthy
-```
-
-
-# 37. Quick Reference
-
-```bash
-# Nodes
+# Cluster Overview
 kubectl get nodes -o wide
-
-# Phoenix workloads
 kubectl get all -n phoenix
-
-# Pods
-kubectl get pods -n phoenix -o wide
-
-# Logs
-kubectl logs -n phoenix <POD>
-kubectl logs -n phoenix <POD> --previous
-
-# Events
 kubectl get events -n phoenix --sort-by='.lastTimestamp'
 
-# Services
-kubectl get svc -n phoenix
-
-# Ingress
+# Ingress & Security
 kubectl get ingress -n phoenix
-
-# TLS
 kubectl get certificate -n phoenix
-kubectl get order -n phoenix
-kubectl get challenge -n phoenix
 
-# Argo CD
+# GitOps Status
 kubectl get applications -n argocd
 
-# HPA
-kubectl get hpa -n phoenix
+# Resource Metrics
+kubectl top nodes
 kubectl top pods -n phoenix
 
-# Storage
-kubectl get pvc -n phoenix
-
-# NGINX
+# Pod Debugging
 kubectl exec -n phoenix deploy/frontend -- nginx -t
-
-# DNS
-kubectl run dns-debug --rm -it --restart=Never \
-  --image=busybox:1.36 -n phoenix -- \
-  nslookup backend.phoenix.svc.cluster.local
-
-# Public application
-curl -I https://taskapp.com.ng
-curl -I https://taskapp.com.ng/healthz
 ```
 
 ---
 
-## 38. Evidence Directory
+## 19. Submission Evidence Structure
 
-For the final project submission, keep evidence under:
+Store submission artifacts under the following schema:
 
 ```text
 evidence/
@@ -1131,26 +633,12 @@ evidence/
 └── failover.png
 ```
 
-The evidence should be generated from the live cluster rather than manually edited.
-
 ---
 
-## 39. Operational Principle
+## 20. Operational Principles
 
-**Git is the source of truth.**
+**Git is the single source of truth.**
 
-Use:
 
-```text
-Git commit
-    ↓
-GitHub
-    ↓
-Argo CD
-    ↓
-Kubernetes
-    ↓
-TaskApp
-```
 
-Use direct `kubectl` changes for diagnostics, emergency recovery, or demonstrations. Permanent application configuration changes should be committed to Git so Argo CD can reconcile the desired state.
+Use direct `kubectl` operations strictly for diagnostics, temporary troubleshooting, or emergency interventions. All permanent state and configuration updates must be committed directly to Git.
