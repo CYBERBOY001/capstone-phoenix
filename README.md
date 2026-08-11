@@ -20,7 +20,8 @@ The project demonstrates modern DevOps practices including:
 ---
 
 # 🏗️ Architecture
-![Architecture Diagram](img.png)
+![Architecture Diagram](docs/EVIDENCE/Arch.png)
+![APP-IMAGE](docs/EVIDENCE/web-application.png)
 
 # 🛠️ Technology Stack
 
@@ -275,9 +276,9 @@ This project demonstrates the transition from a traditional single-server Docker
 
 ```text
 AWS Infrastructure
-├── EC2 #1 (K3s Control Plane)
-├── EC2 #2 (K3s Worker)
-└── EC2 #3 (K3s Worker)
+├── EC2 1 (K3s Control Plane)
+├── EC2 2 (K3s Worker)
+└── EC2 3 (K3s Worker)
 
 K3s System Components
 ├── NGINX Ingress Controller
