@@ -49,7 +49,7 @@ The project demonstrates modern DevOps practices including:
 * StatefulSets & PersistentVolumeClaims
 * Horizontal Pod Autoscaler (HPA)
 * Pod Disruption Budgets (PDB)
-* NetworkPolicies
+
 
 **Ingress & TLS**
 
@@ -65,7 +65,7 @@ The project demonstrates modern DevOps practices including:
 **Security**
 
 * Sealed Secrets & Kubernetes Secrets
-*  AWS Security Groups
+*   AWS Security Groups
 * SSH key authentication
 * fail2ban
 * ufw
