@@ -65,8 +65,10 @@ The project demonstrates modern DevOps practices including:
 **Security**
 
 * Sealed Secrets & Kubernetes Secrets
-* NetworkPolicies & AWS Security Groups
+*  AWS Security Groups
 * SSH key authentication
+* fail2ban
+* ufw
 * Non-root containers & Security contexts
 * Resource limits
 
